@@ -1,0 +1,57 @@
+{
+  "fecha": "2026-09-23T18:39:15",
+  "duracion_total_segundos": 4.43,
+  "resultado": "OK - los 3 casos se comportaron como se esperaba",
+  "casos": {
+    "real": {
+      "pregunta": "¿Qué es el chunk overlap y para qué sirve?",
+      "respuesta": "El chunk overlap (superposición) es la cantidad de tokens que se repiten entre un chunk y el siguiente. Su función es evitar que una idea importante quede cortada exactamente en el límite entre dos chunks y termine perdiendo contexto en ambos lados. Un overlap típico es de entre el 10% y el 20% del chunk_size. Demasiado overlap genera redundancia innecesaria en la base vectorial (el mismo contenido indexado varias veces), mientras que overlap cero corre el riesgo real de fragmentar ideas a la mitad.",
+      "respuesta_encontrada": true,
+      "fuentes": [
+        "estrategias_de_chunking.txt"
+      ],
+      "fragmentos_recuperados": [
+        {
+          "texto": "El chunking es el proceso de dividir un documento largo en fragmentos más pequeños antes de generar sus embeddings. Es un paso obligatorio por dos razones: primero, los modelos de embeddings tienen un límite de tokens que pueden procesar de una vez; segundo, y más importante, un chunk más chico y enfocado en una sola idea produce un embedding más preciso que un documento entero donde se mezclan muchos temas distintos, lo cual mejora la calidad de la búsqueda semántica.\n\nEl tamaño del chunk (chunk_size) es un compromiso entre dos fuerzas opuestas. Un chunk muy chico (por ejemplo, una oración suelta) puede perder contexto necesario para que el fragmento tenga sentido por sí solo. Un chunk muy grande diluye el embedding, porque mezcla varias ideas en un solo vector y pierde precisión temática. En la práctica, se suelen usar tamaños de entre 200 y 500 tokens como punto de partida, ajustando según el tipo de contenido: documentación técnica densa suele funcionar mejor con chunks más chicos, mientras que prosa narrativa tolera chunks más grandes.\n\nEl chunk_overlap (superposición) es la cantidad de tokens que se repiten entre un chunk y el siguiente. Su función es evitar que una idea importante quede cortada exactamente en el límite entre dos chunks y termine perdiendo contexto en ambos lados. Un overlap típico es de entre el 10% y el 20% del chunk_size. Demasiado overlap genera redundancia innecesaria en la base vectorial (el mismo contenido indexado varias veces), mientras que overlap cero corre el riesgo real de fragmentar ideas a la mitad.",
+          "fuente": "estrategias_de_chunking.txt",
+          "distancia": 0.0927
+        },
+        {
+          "texto": "Un splitter recursivo por caracteres (como RecursiveCharacterTextSplitter) intenta dividir el texto respetando una jerarquía de separadores, probando primero con separadores \"grandes\" (como saltos de párrafo) y solo recurriendo a separadores más chicos (como espacios) si no logra respetar el tamaño máximo de otra forma. Esto produce chunks que, en la medida de lo posible, respetan los límites naturales del texto (párrafos, oraciones) en lugar de cortar de forma arbitraria cada N caracteres, que es lo que haría un splitter ingenuo.\n\nEs importante medir el tamaño del chunk en tokens y no en caracteres, porque los tokens son la unidad real que limita tanto al modelo de embeddings como al modelo de lenguaje que consume el contexto recuperado, y la relación entre caracteres y tokens varía según el idioma y el tipo de texto (código, texto con muchos números, texto en español con tildes, etc.). Medir en caracteres puede hacer que un chunk que parece razonable en longitud termine excediendo el límite real de tokens del modelo.\n\nPor último, una estrategia de ingesta robusta necesita generar identificadores determinísticos para cada chunk, típicamente a partir de un hash del contenido (por ejemplo SHA-256). Esto permite que, si el proceso de ingesta se vuelve a correr sobre el mismo documento sin cambios, los chunks se actualicen (upsert) en lugar de duplicarse en la base vectorial, y que un cambio real en el contenido de un documento sí genere un nuevo id y por lo tanto una actualización efectiva del chunk correspondiente.",
+          "fuente": "estrategias_de_chunking.txt",
+          "distancia": 0.1519
+        },
+        {
+          "texto": "Retrieval-Augmented Generation (RAG) es una arquitectura que combina un sistema de recuperación de información con un modelo de lenguaje generativo. La idea central es simple: en lugar de depender únicamente del conocimiento que el modelo aprendió durante su entrenamiento (que tiene una fecha de corte y puede no incluir información específica de un dominio), el sistema busca fragmentos de texto relevantes en una base de conocimiento externa y se los entrega al modelo como contexto antes de que genere la respuesta.\n\nEl flujo típico de un sistema RAG tiene dos fases claramente separadas. La primera es la fase de indexación (o ingesta), que se ejecuta una sola vez, o cada vez que la base de conocimiento cambia: los documentos se limpian, se dividen en fragmentos más pequeños llamados chunks, y cada chunk se convierte en un vector numérico (embedding) que se guarda en una base de datos vectorial junto con su texto original y su metadata. La segunda fase es la de consulta (o inferencia), que se ejecuta cada vez que un usuario hace una pregunta: la pregunta se convierte también en un embedding, se buscan los chunks más similares en la base vectorial, y esos chunks se insertan en un prompt junto con la pregunta original antes de pasárselo al modelo de lenguaje.\n\nLas ventajas principales de RAG frente a depender solo del conocimiento paramétrico del modelo son tres. Primero, reduce las alucinaciones: el modelo tiene un contexto concreto de dónde sacar la respuesta, en lugar de inventar información. Segundo, permite citar la fuente exacta de donde salió cada dato, lo cual es clave en dominios donde la trazabilidad importa (legal, médico, soporte técnico). Tercero, permite actualizar el conocimiento del sistema simplemente agregando o modificando documentos en la base vectorial, sin necesidad de reentrenar ni hacer fine-tuning del modelo, que es un proceso mucho más costoso y lento.",
+          "fuente": "rag_fundamentos.txt",
+          "distancia": 0.1588
+        },
+        {
+          "texto": "## Consistencia del modelo de embeddings\n\nEl error más común al construir un RAG es usar un modelo de embeddings para indexar los documentos y otro distinto para convertir la pregunta del usuario en vector. Cada modelo genera su propio espacio vectorial, con dimensiones y geometría diferentes, por lo que comparar vectores de dos modelos distintos no tiene sentido y los resultados de la búsqueda son prácticamente aleatorios. Una buena práctica es definir el nombre del modelo de embeddings en un único lugar de la configuración y guardarlo también como metadata de la colección, para poder verificar al consultar que se está usando el mismo modelo con el que se indexó.\n\n## Salida estructurada\n\nPara que la respuesta del sistema sea fácil de consumir por otros programas, conviene que el modelo no devuelva texto libre sino un objeto con una estructura definida, por ejemplo un JSON con la respuesta y la lista de fuentes utilizadas. Herramientas como PydanticOutputParser agregan al prompt las instrucciones de formato derivadas de un modelo Pydantic y luego validan la salida del modelo contra ese esquema. Si la salida no cumple el esquema, se produce un error de parseo que puede manejarse con reintentos, idealmente dejando registro en los logs de cada intento fallido para tener visibilidad de qué está fallando.\n\n## Cómo evaluar que el sistema no alucina\n\nUn RAG se evalúa con dos tipos de preguntas. Las preguntas positivas tienen su respuesta en los documentos y permiten verificar que la recuperación encuentra el fragmento correcto y que la respuesta cita la fuente adecuada. Las preguntas trampa no tienen respuesta en los documentos y permiten verificar que el sistema admite que no sabe en lugar de inventar. Conviene incluir dos variantes de pregunta trampa: una totalmente ajena al dominio, que debería ser descartada por el umbral de relevancia, y otra del mismo dominio pero con un dato que no figura en la base, que pone a prueba la instrucción del prompt de sistema.",
+          "fuente": "prompting_grounded_y_evaluacion.md",
+          "distancia": 0.1798
+        }
+      ]
+    },
+    "trampa_fuera_de_dominio": {
+      "pregunta": "¿Cuál es la mejor receta de milanesas con puré?",
+      "respuesta": "No lo sé.",
+      "respuesta_encontrada": false,
+      "fuentes": [],
+      "fragmentos_recuperados": []
+    },
+    "trampa_dentro_del_dominio": {
+      "pregunta": "¿Quién inventó el algoritmo HNSW y en qué año se publicó?",
+      "respuesta": "No lo sé.",
+      "respuesta_encontrada": false,
+      "fuentes": [],
+      "fragmentos_recuperados": [
+        {
+          "texto": "Un embedding es una representación numérica de un texto en forma de vector: una lista de números de punto flotante, típicamente de varios cientos de dimensiones, generada por un modelo entrenado específicamente para esa tarea. La propiedad clave de un buen modelo de embeddings es que textos con significado semánticamente similar producen vectores cercanos entre sí en ese espacio de alta dimensión, aunque no compartan las mismas palabras exactas. Esto es lo que permite hacer búsqueda por significado en lugar de búsqueda por coincidencia exacta de palabras clave.\n\nPara medir qué tan cerca están dos vectores se suele usar la similitud coseno, que calcula el coseno del ángulo entre ambos vectores e ignora su magnitud. El resultado va de -1 a 1: valores cercanos a 1 indican que los textos son casi idénticos en significado, valores cercanos a 0 indican que no están relacionados, y valores negativos (poco frecuentes con modelos de embeddings de texto modernos) indicarían significados opuestos. Se prefiere sobre la distancia euclidiana porque esta última es sensible a la magnitud del vector, lo cual puede distorsionar la comparación cuando los vectores no están normalizados.\n\nUna base de datos vectorial (como ChromaDB, Pinecone o Weaviate) es un sistema de almacenamiento optimizado específicamente para guardar embeddings y realizar búsquedas de similitud de forma eficiente, incluso sobre millones de vectores. A diferencia de una base de datos relacional tradicional, que indexa por igualdad o rangos exactos, una base vectorial indexa usando estructuras como HNSW (Hierarchical Navigable Small World) que permiten encontrar los k vectores más cercanos a una consulta sin tener que compararla contra absolutamente todos los vectores almacenados, lo que sería prohibitivamente lento a gran escala.",
+          "fuente": "embeddings_y_bases_vectoriales.txt",
+          "distancia": 0.1869
+        }
+      ]
+    }
+  }
+}
