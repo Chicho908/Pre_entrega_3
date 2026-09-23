@@ -37,6 +37,8 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
 
+# Funcion principal de la ingesta: lee /data, fragmenta, genera ids y guarda
+# en ChromaDB. Devuelve el manager para poder usar la base enseguida.
 def ingestar_documentos(forzar: bool = False) -> VectorMemoryManager:
     manager = VectorMemoryManager(persist_path=PERSIST_PATH, collection_name=COLLECTION_NAME)
 

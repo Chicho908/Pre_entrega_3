@@ -1,12 +1,6 @@
-# Credenciales: nunca se suben
 .env
-
-# Entorno virtual y caches de Python
-venv/
-.venv/
 __pycache__/
 *.pyc
-
-# Base vectorial: se regenera con 'python ingesta.py'
+venv/
+.venv/
 vectorstore/
-chroma_db/

@@ -35,6 +35,8 @@ CASOS = [
 EVIDENCIA = Path(__file__).parent / "evidencia_pruebas.json"
 
 
+# Corre los 3 casos en paralelo, verifica cada resultado con asserts y
+# guarda todo en evidencia_pruebas.json.
 async def main():
     ingestar_documentos()  # no hace nada si la base ya está poblada
 

@@ -10,6 +10,8 @@ from pydantic import ValidationError
 from rag import get_rag_response
 
 
+# Loop de preguntas: lee lo que escribe el usuario, llama a get_rag_response
+# y muestra la respuesta con sus fuentes, hasta que escriba "salir".
 async def main():
     print("Sistema RAG listo. Escribí una pregunta (o 'salir' para terminar).\n")
     while True:
